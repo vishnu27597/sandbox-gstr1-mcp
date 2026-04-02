@@ -22,12 +22,38 @@ mcp = FastMCP("Sandbox GSTR-1 MCP Server")
 # ─────────────────────────────────────────────
 # Configuration
 # ─────────────────────────────────────────────
-SANDBOX_API_URL = "https://api.sandbox.co.in"
+#
+# Sandbox.co has TWO distinct base URLs — one per environment:
+#
+#   Environment  │ Host URL                        │ Credentials prefix │ Billing
+#   ─────────────┼─────────────────────────────────┼────────────────────┼────────
+#   Test         │ https://test-api.sandbox.co.in  │ key_test_...       │ Free
+#   Production   │ https://api.sandbox.co.in       │ key_live_...       │ Billed
+#
+# Source: https://developer.sandbox.co.in/guides/developer-resources/environments
+#
+# The server auto-selects the URL based on the API key prefix:
+#   key_test_... → test environment  (https://test-api.sandbox.co.in)
+#   key_live_... → production        (https://api.sandbox.co.in)
+
+SANDBOX_TEST_API_URL = "https://test-api.sandbox.co.in"
+SANDBOX_PROD_API_URL = "https://api.sandbox.co.in"
 API_VERSION = "1.0.0"
 
 # Default test credentials — override via environment variables in production
 DEFAULT_API_KEY = os.environ.get("SANDBOX_API_KEY", "key_test_ed6b10d21cf546d7b4b600021f91c341")
 DEFAULT_API_SECRET = os.environ.get("SANDBOX_API_SECRET", "secret_test_798d3274325741fab93dd24bbb786a3a")
+
+
+def get_base_url() -> str:
+    """Return the correct base URL based on the API key prefix.
+
+    key_test_... → https://test-api.sandbox.co.in  (free, isolated)
+    key_live_... → https://api.sandbox.co.in        (billed, production)
+    """
+    if DEFAULT_API_KEY.startswith("key_live"):
+        return SANDBOX_PROD_API_URL
+    return SANDBOX_TEST_API_URL
 
 
 def get_headers(access_token: Optional[str] = None) -> Dict[str, str]:
@@ -64,7 +90,7 @@ def generate_taxpayer_session(gstin: str, username: str) -> Dict[str, Any]:
     """
     logger.info("Generating taxpayer session for GSTIN: %s", gstin)
 
-    url = f"{SANDBOX_API_URL}/gst/compliance/tax-payer/authenticate"
+    url = f"{get_base_url()}/gst/compliance/tax-payer/authenticate"
     payload = {
         "gstin": gstin,
         "username": username,
@@ -106,7 +132,7 @@ def save_gstr1_data(
     """
     month = ret_period[:2]
     year = ret_period[2:]
-    url = f"{SANDBOX_API_URL}/gst/compliance/tax-payer/gstrs/gstr-1/{year}/{month}"
+    url = f"{get_base_url()}/gst/compliance/tax-payer/gstrs/gstr-1/{year}/{month}"
 
     payload = gstr1_data.copy()
     payload["gstin"] = gstin
@@ -149,7 +175,7 @@ def check_return_status(
     month = ret_period[:2]
     year = ret_period[2:]
     url = (
-        f"{SANDBOX_API_URL}/gst/compliance/tax-payer/gstrs/gstr-1"
+        f"{get_base_url()}/gst/compliance/tax-payer/gstrs/gstr-1"
         f"/{year}/{month}/status?reference_id={reference_id}"
     )
 
@@ -190,7 +216,7 @@ def proceed_to_file(
     month = ret_period[:2]
     year = ret_period[2:]
     url = (
-        f"{SANDBOX_API_URL}/gst/compliance/tax-payer/gstrs/gstr-1"
+        f"{get_base_url()}/gst/compliance/tax-payer/gstrs/gstr-1"
         f"/{year}/{month}/new-proceed?is_nil={is_nil}"
     )
     payload = {"gstin": gstin, "ret_period": ret_period}
@@ -232,7 +258,7 @@ def get_gstr1_summary(
     month = ret_period[:2]
     year = ret_period[2:]
     url = (
-        f"{SANDBOX_API_URL}/gst/compliance/tax-payer/gstrs/gstr-1"
+        f"{get_base_url()}/gst/compliance/tax-payer/gstrs/gstr-1"
         f"/{year}/{month}?summary_type={summary_type}"
     )
 
@@ -263,7 +289,7 @@ def generate_evc_otp(access_token: str, pan: str) -> Dict[str, Any]:
     Returns:
         Dict with OTP generation status, or an error dict.
     """
-    url = f"{SANDBOX_API_URL}/gst/compliance/tax-payer/evc/otp?gstr=gstr-1"
+    url = f"{get_base_url()}/gst/compliance/tax-payer/evc/otp?gstr=gstr-1"
     payload = {"pan": pan}
 
     logger.info("Generating EVC OTP for PAN: %s", pan)
@@ -306,7 +332,7 @@ def file_gstr1(
     month = ret_period[:2]
     year = ret_period[2:]
     url = (
-        f"{SANDBOX_API_URL}/gst/compliance/tax-payer/gstrs/gstr-1"
+        f"{get_base_url()}/gst/compliance/tax-payer/gstrs/gstr-1"
         f"/{year}/{month}/file?pan={pan}&otp={otp}"
     )
     payload = {
