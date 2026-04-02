@@ -477,7 +477,12 @@ def convert_excel_to_sandbox_payload(excel_path: str) -> Dict[str, Any]:
 # ─────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────
-if __name__ == "__main__":
+def main():
+    """Entry point used by uv run / uvx and the pyproject.toml script."""
     logger.info("Starting Sandbox GSTR-1 MCP Server (stdio transport)...")
     # mcp.run() uses stdio transport by default — required for Claude Desktop
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

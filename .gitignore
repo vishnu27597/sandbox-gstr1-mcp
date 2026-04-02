@@ -69,3 +69,7 @@ Thumbs.db
 gstr1_filings.db
 output/
 temp/
+
+# uv
+.venv/
+*.egg-info/
